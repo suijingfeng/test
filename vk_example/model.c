@@ -121,7 +121,7 @@ static void uniformBufUpdateMVP(struct texcube_vs_uniform * const pData, struct 
 
 static void uniformBufUploadVertexData(struct texcube_vs_uniform * const pData, const struct demo * const demo)
 {
-	uint32_t i;
+    uint32_t i;
     for (i = 0; i < 12 * 3; ++i)
     {
         pData->position[i][0] = g_vertex_buffer_data[i * 3];
@@ -143,8 +143,9 @@ static void uniformBufUploadVertexData(struct texcube_vs_uniform * const pData, 
 static uint32_t FindMemoryTypeIndex(const VkPhysicalDeviceMemoryProperties * const pMemProp,
         uint32_t typeBits, VkFlags requirements_mask)
 {
-   // Search memtypes to find first index with those properties
-    for (uint32_t i = 0; i < VK_MAX_MEMORY_TYPES; ++i)
+    // Search memtypes to find first index with those properties
+    uint32_t i ;
+    for ( i = 0; i < VK_MAX_MEMORY_TYPES; ++i)
     {
         if ((typeBits & 1) == 1)
         {
@@ -203,8 +204,8 @@ void vk_upload_cube_data_buffers(struct demo * const demo)
     buf_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     buf_info.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     buf_info.size = sizeof(data);
-
-    for (unsigned int i = 0; i < demo->swapchainImageCount; ++i)
+    unsigned int i;
+    for (i = 0; i < demo->swapchainImageCount; ++i)
     {
         vk_createUniformBufferAndBindItWithMemory(demo, &buf_info, 
                 &demo->swapchain_image_resources[i].uniform_buffer, 

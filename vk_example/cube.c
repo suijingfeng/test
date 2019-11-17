@@ -373,7 +373,8 @@ static void vk_create_framebuffers(struct demo * const pDemo)
 
 void demo_prepare(struct demo * const demo)
 {
-    
+    uint32_t i = 0 ;
+
     if (demo->cmd_pool == VK_NULL_HANDLE)
     {
         const VkCommandPoolCreateInfo cmd_pool_info = {
@@ -426,7 +427,7 @@ void demo_prepare(struct demo * const demo)
     
     vk_create_pipeline(demo);
 
-    for (uint32_t i = 0; i < demo->swapchainImageCount; ++i)
+    for ( i = 0; i < demo->swapchainImageCount; ++i)
     {
         VK_CHECK( vkAllocateCommandBuffers(demo->device, &cmd, &demo->swapchain_image_resources[i].cmd) );
     }
@@ -450,12 +451,13 @@ void demo_prepare(struct demo * const demo)
             .commandBufferCount = 1,
         };
 
-        for (uint32_t i = 0; i < demo->swapchainImageCount; ++i)
+	uint32_t j = 0;
+        for (j = 0; j < demo->swapchainImageCount; ++j)
         {
             VK_CHECK( vkAllocateCommandBuffers(demo->device, &present_cmd_info,
-                                           &demo->swapchain_image_resources[i].graphics_to_present_cmd) );
+                                           &demo->swapchain_image_resources[j].graphics_to_present_cmd) );
         
-            vk_build_image_ownership_cmd(demo, i);
+            vk_build_image_ownership_cmd(demo, j);
         }
     }
 
@@ -463,7 +465,7 @@ void demo_prepare(struct demo * const demo)
     vk_prepare_descriptor_set(demo);
     vk_create_framebuffers(demo);
 
-    for (uint32_t i = 0; i < demo->swapchainImageCount; ++i)
+    for (i = 0; i < demo->swapchainImageCount; ++i)
     {
         demo->current_buffer = i;
         vk_draw_build_cmd(demo, demo->swapchain_image_resources[i].cmd);
@@ -581,8 +583,8 @@ int main(int argc, char **argv)
     demo.quit = false;
     demo.curFrame = 0;
     demo.frame_index = 0;
-    
-    for (int i = 1; i < argc; i++)
+    int i;
+    for (i = 1; i < argc; i++)
     {
         if (strcmp(argv[i], "--use_staging") == 0) {
             demo.use_staging_buffer = true;
