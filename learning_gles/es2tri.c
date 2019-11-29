@@ -55,12 +55,12 @@ make_z_rot_matrix(GLfloat angle, GLfloat *m)
    m[5] = c;
 }
 
-static void
-make_scale_matrix(GLfloat xs, GLfloat ys, GLfloat zs, GLfloat *m)
+static void make_scale_matrix(GLfloat xs, GLfloat ys, GLfloat zs, GLfloat *m)
 {
-   int i;
-   for (i = 0; i < 16; i++)
+   unsigned int i;
+   for (i = 0; i < 16; ++i)
       m[i] = 0.0;
+
    m[0] = xs;
    m[5] = ys;
    m[10] = zs;
@@ -68,15 +68,14 @@ make_scale_matrix(GLfloat xs, GLfloat ys, GLfloat zs, GLfloat *m)
 }
 
 
-static void
-mul_matrix(GLfloat *prod, const GLfloat *a, const GLfloat *b)
+static void mul_matrix(GLfloat *prod, const GLfloat *a, const GLfloat *b)
 {
 #define A(row,col)  a[(col<<2)+row]
 #define B(row,col)  b[(col<<2)+row]
 #define P(row,col)  p[(col<<2)+row]
    GLfloat p[16];
-   GLint i;
-   for (i = 0; i < 4; i++) {
+   unsigned int i;
+   for (i = 0; i < 4; ++i) {
       const GLfloat ai0=A(i,0),  ai1=A(i,1),  ai2=A(i,2),  ai3=A(i,3);
       P(i,0) = ai0 * B(0,0) + ai1 * B(1,0) + ai2 * B(2,0) + ai3 * B(3,0);
       P(i,1) = ai0 * B(0,1) + ai1 * B(1,1) + ai2 * B(2,1) + ai3 * B(3,1);
@@ -382,7 +381,7 @@ event_loop(Display *dpy, Window win,
       case KeyPress:
          {
             char buffer[10];
-            int r, code;
+            int code;
             code = XLookupKeysym(&event.xkey, 0);
             if (code == XK_Left) {
                view_roty += 5.0;
@@ -397,8 +396,7 @@ event_loop(Display *dpy, Window win,
                view_rotx -= 5.0;
             }
             else {
-               r = XLookupString(&event.xkey, buffer, sizeof(buffer),
-                                 NULL, NULL);
+               XLookupString(&event.xkey, buffer, sizeof(buffer), NULL, NULL);
                if (buffer[0] == 27) {
                   /* escape */
                   return;
@@ -431,7 +429,7 @@ usage(void)
 int main(int argc, char *argv[])
 {
    const int winWidth = 640, winHeight = 480;
-   Display *x_dpy;
+   Display * x_dpy;
    Window win;
    EGLSurface egl_surf;
    EGLContext egl_ctx;
