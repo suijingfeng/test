@@ -226,7 +226,7 @@ static D3DXMATRIX* _D3DXMatrixMultiply(
 }
 
 // Setup matrices.
-void SetupMatrices(State* renderState)
+void SetupMatrices(State* const renderState)
 {
     // Compute the angle and advance the time counter.
     float fAngle = renderState->m_Time * (2.0f * M_PI) / renderState->m_StepsPerCircle;
@@ -257,10 +257,7 @@ void SetupMatrices(State* renderState)
 }
 
 // Setup transformation maxtrix.
-void SetupTransform(
-    State* renderState,
-    D3DXMATRIX* matrix
-    )
+void SetupTransform( State* const renderState, D3DXMATRIX* matrix )
 {
     SetupMatrices(renderState);
 
@@ -268,9 +265,7 @@ void SetupTransform(
     // Matrix = scale * rotation * translation.
     D3DXMATRIX transform;
     _D3DXMatrixMultiply(&transform,
-                        _D3DXMatrixMultiply(&transform,
-                                            &renderState->m_ScaleMatrix,
-                                            &renderState->m_RotateMatrix),
+                        _D3DXMatrixMultiply(&transform, &renderState->m_ScaleMatrix, &renderState->m_RotateMatrix),
                         &renderState->m_MoveMatrix);
 
     // Transform view matrix with object transform matrices.
@@ -330,10 +325,10 @@ void MatMult(
     GLfloat Mat2[16]
     )
 {
-    int r, c;
-    for (r = 0; r < 4; r++)
+    unsigned int r, c;
+    for (r = 0; r < 4; ++r)
     {
-        for (c = 0; c < 4; c++)
+        for (c = 0; c < 4; ++c)
         {
             Result[r*4+c] =   Mat1[r*4 + 0] * Mat2[0 + c]
                             + Mat1[r*4 + 1] * Mat2[4 + c]
@@ -342,6 +337,7 @@ void MatMult(
         }
     }
 }
+
 
 void Sphere(
     GLfloat** VertexArray,
@@ -499,17 +495,13 @@ static D3DXMATRIX*  _D3DXMatrixRotationYawPitchRoll(
 }
 
 // Set eye position.
-void SetEye(
-    State* state,
-    float X,
-    float Y,
-    float Z
-    )
+void SetEye( State* const state, float X, float Y, float Z )
 {
     state->m_Eye.x = X;
     state->m_Eye.y = Y;
     state->m_Eye.z = Z;
 }
+
 // Set object scale in each direction.
 void SetScale(
     State* state,
@@ -544,23 +536,16 @@ void SetMove(
 }
 
 // Set time step.
-void SetTimeStep(
-    State* state,
-    ULONG TimeStep
-    )
+void SetTimeStep( State* state, ULONG TimeStep )
 {
     state->m_TimeStep = (float)TimeStep;
 }
 
-void InitializeRenderState(
-    State* state,
-    int width,
-    int height
-    )
+void InitializeRenderState( State* const state, int width, int height )
 {
-    _D3DXMatrixIdentity(&state->m_ProjMatrix);
-    _D3DXMatrixIdentity(&state->m_WorldMatrix);
-    _D3DXMatrixIdentity(&state->m_ViewMatrix);
+    _D3DXMatrixIdentity( &state->m_ProjMatrix );
+    _D3DXMatrixIdentity( &state->m_WorldMatrix );
+    _D3DXMatrixIdentity( &state->m_ViewMatrix );
 
     SetScale(state, 1, 1, 1);
     SetRotation(state, 0, 0, 0);

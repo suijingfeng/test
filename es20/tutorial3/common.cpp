@@ -148,7 +148,7 @@ CubeTexture* LoadCubeDDS(const char * filename)
     do
     {
         unsigned int dummy, size, offset, width;
-
+        
         // read first 4 bytes, magic number.
         if (!fread_bit32(&dummy, sizeof (unsigned int), fptr))
             break;

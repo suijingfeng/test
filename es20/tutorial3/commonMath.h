@@ -46,10 +46,12 @@ struct D3DXVECTOR3
 	float x, y, z;
 };
 
+
 struct D3DXVECTOR4
 {
 	float x, y, z, w;
 };
+
 
 typedef struct _D3DMATRIX {
     float        _11, _12, _13, _14;
@@ -58,38 +60,34 @@ typedef struct _D3DMATRIX {
     float        _41, _42, _43, _44;
 } D3DXMATRIX;
 
+
 struct State
 {
-	D3DXVECTOR3     m_Eye;
-	D3DXVECTOR3     m_Lookat;
-	D3DXVECTOR3     m_UpVec;
-	D3DXVECTOR3     m_EyeVector;
+	struct _D3DMATRIX  m_ViewMatrix;
+	struct _D3DMATRIX  m_ProjMatrix;
+	struct _D3DMATRIX  m_ScaleMatrix;
+        struct _D3DMATRIX  m_RotateMatrix;
+	struct _D3DMATRIX  m_MoveMatrix;
+	struct _D3DMATRIX  m_WorldMatrix;
+
+        struct D3DXVECTOR3  m_Eye;
+	struct D3DXVECTOR3  m_Lookat;
+	struct D3DXVECTOR3  m_UpVec;
+	struct D3DXVECTOR3  m_EyeVector;
 
 	float		m_Time;
 	float		m_TimeStep;
 	float		m_StepsPerCircle;
 
-	D3DXMATRIX  m_ViewMatrix,
-				m_ProjMatrix,
-				m_ScaleMatrix,
-				m_RotateMatrix,
-				m_MoveMatrix,
-				m_WorldMatrix;
-
-	int			FRAME_BUFFER_WIDTH,
-				FRAME_BUFFER_HEIGHT;
+	unsigned int  FRAME_BUFFER_WIDTH;
+	unsigned int  FRAME_BUFFER_HEIGHT;
 };
 
 // Setup matrices.
-void SetupMatrices(
-	State* renderState
-	);
+void SetupMatrices( State* renderState );
 
 // Setup transformation maxtrix.
-void SetupTransform(
-	State* renderState,
-	D3DXMATRIX* matrix
-	);
+void SetupTransform( State* const renderState, D3DXMATRIX* matrix );
 
 void GetFrustum(
 	GLfloat *matrix,
@@ -123,20 +121,11 @@ void Sphere(
     );
 
 // Set eye position.
-void SetEye(
-	State* state,
-	float X,
-	float Y,
-	float Z
-	);
+void SetEye( State* const state, float X, float Y, float Z );
 
 // Set object scale in each direction.
-void SetScale(
-	State* state,
-	float X,
-	float Y,
-	float Z
-	);
+void SetScale( State* state,
+	float X, float Y, float Z );
 
 // Set object rotation in each direction.
 void SetRotation(
@@ -155,16 +144,9 @@ void SetMove(
 	);
 
 // Set time step.
-void SetTimeStep(
-	State* state,
-	ULONG TimeStep
-	);
+void SetTimeStep( State* state, ULONG TimeStep );
 
-void InitializeRenderState(
-	State* state,
-	int width,
-	int height
-	);
+void InitializeRenderState( State* state, int width, int height );
 
 #endif
 
