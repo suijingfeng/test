@@ -22,6 +22,10 @@ triangle2:
 pixmap:
 	$(COMPILE) $(CFLAGS) egl_pixmap.c $(LIBS) -o pixmap
 
+# es2gears:
+#	$(COMPILE) $(CFLAGS) es2gears.c $(LIBS) -o es2gears
+	
+
 clean:
 	rm -f *.o $(TARGETS)
 

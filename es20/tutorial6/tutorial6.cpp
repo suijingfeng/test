@@ -227,7 +227,7 @@ unsigned char * GltLoadDIBitmap(const char *filename, BMPINFO *info)
     header.bfOffBits   = read_dword(fp);
 
     if (header.bfType != BF_TYPE){
-        /* Not a bitmap file - return NULL... */
+        fprintf(stdout, "Not a bitmap file - return NULL...\n");
         fclose(fp);
         return (NULL);
     }
