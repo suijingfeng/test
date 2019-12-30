@@ -2,7 +2,7 @@ COMPILE = gcc
 
 CFLAGS = -Wall -O3
 # -fomit-frame-pointer 
-SRC =	es2gears.c egl_wayland.c
+SRC =	es2gears.c egl_wayland.c mat_math.c
 
 LIBS = -lm -lwayland-client -lwayland-egl -lEGL -lGLESv2
 
