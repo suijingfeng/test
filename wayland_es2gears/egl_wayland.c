@@ -123,6 +123,7 @@ static const struct wl_callback_listener sc_sync_listener = {
 static struct eglut_state _eglut_state = {
    .window_width = 300,
    .window_height = 300,
+   .frame_sync = 1
 };
 
 struct eglut_state *_eglut = &_eglut_state;
@@ -399,6 +400,7 @@ extern void gears_draw(void);
 
 static void wl_draw(void *data, struct wl_callback * pCallback, uint32_t time)
 {
+
     struct window * pWindow = (struct window *)data;
 
     if ( pCallback ) {
@@ -412,7 +414,7 @@ static void wl_draw(void *data, struct wl_callback * pCallback, uint32_t time)
     // redrawing operations, and driving animations. The notification will only be
     // posted for one frame unless requested again.
     //
-    pWindow->callback = wl_surface_frame( pWindow->surface );
+    // pWindow->callback = wl_surface_frame( pWindow->surface );
     //
     // A Wayland server will render buffers. This will take some time.
     // If an attempt is made by a client to ask for a buffer to be rendered prematurely,
@@ -423,7 +425,7 @@ static void wl_draw(void *data, struct wl_callback * pCallback, uint32_t time)
     // This is done by first getting a wl_callback by wl_surface_frame 
     // and then adding a listener by wl_callback_add_listener
     //
-    wl_callback_add_listener( pWindow->callback, &sc_frame_listener, pWindow );
+    // wl_callback_add_listener( pWindow->callback, &sc_frame_listener, pWindow );
 
     // struct wl_callback * pFrameCallback = wl_surface_frame( pWindow->surface );
     // wl_callback_add_listener(pFrameCallback, &frame_listener, pWindow);
@@ -433,64 +435,13 @@ static void wl_draw(void *data, struct wl_callback * pCallback, uint32_t time)
 
 
 
-
 void WL_EventLoop(void)
 {
-    struct pollfd pollfd;
+    while ( 1 ) {
+        gears_idle();
 
-    pollfd.fd = wl_display_get_fd(display.display);
-    pollfd.events = POLLIN;
-    pollfd.revents = 0;
-
-    while (1)
-    {
-        /* If we need to flush but can't, don't do anything at all which could
-         * push further events into the socket. */
-        if ( !(pollfd.events & POLLOUT) )
-        {
-           wl_display_dispatch_pending(display.display);
-
-           gears_idle();
-           /* Client wants to redraw, but we have no frame event to trigger the
-            * redraw; kickstart it by redrawing immediately. */
-           if ( !window.callback ) {
-             wl_draw(&window, NULL, 0);
-           }
-        }
-
-        int ret = wl_display_flush(display.display);
-        if (ret < 0 && errno != EAGAIN)
-           break; /* fatal error; socket is broken */
-        else if (ret < 0 && errno == EAGAIN)
-           pollfd.events |= POLLOUT; /* need to wait until we can flush */
-        else
-           pollfd.events &= ~POLLOUT; /* successfully flushed */
-
-        if (poll(&pollfd, 1, -1) == -1)
-           break;
-
-        if (pollfd.revents & (POLLERR | POLLHUP))
-           break;
-
-        if (pollfd.events & POLLOUT) {
-	   if (!(pollfd.revents & POLLOUT))
-              continue; /* block until we can flush */
-           pollfd.events &= ~POLLOUT;
-        }
-
-        if (pollfd.revents & POLLIN) {
-           ret = wl_display_dispatch(display.display);
-           if (ret == -1)
-               break;
-        }
-
-        ret = wl_display_flush(display.display);
-        if (ret < 0 && errno != EAGAIN)
-           break; /* fatal error; socket is broken */
-        else if (ret < 0 && errno == EAGAIN)
-           pollfd.events |= POLLOUT; /* need to wait until we can flush */
-        else
-           pollfd.events &= ~POLLOUT; /* successfully flushed */
+	wl_display_dispatch_pending(display.display);
+	wl_draw(&window, NULL, 0);
     }
 }
 

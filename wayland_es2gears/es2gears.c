@@ -474,7 +474,7 @@ draw_gear(struct gear *gear, GLfloat *transform,
    /* Translate and rotate the gear */
    memcpy(model_view, transform, sizeof (model_view));
    translate(model_view, x, y, 0);
-   rotate(model_view, 2 * M_PI * angle / 360.0, 0, 0, 1);
+   rotate(model_view, (M_PI / 180.0) * angle, 0, 0, 1);
 
    /* Create and set the ModelViewProjectionMatrix */
    memcpy(model_view_projection, ProjectionMatrix, sizeof(model_view_projection));
@@ -745,6 +745,14 @@ int main(int argc, char *argv[])
     /* Initialize the window */
     _eglut->window_width = 300;
     _eglut->window_height = 300;
+    _eglut->frame_sync = 1;
+
+
+    int i = 0;
+    for (i = 1; i < argc; i++) {
+        if (strcmp("-b", argv[i]) == 0)
+            _eglut->frame_sync = 0;
+    }
 
     _eglut->native_dpy = (EGLNativeDisplayType) WL_InitDisplay();
     _eglut->dpy = eglGetDisplay(_eglut->native_dpy);
@@ -824,7 +832,12 @@ int main(int argc, char *argv[])
         fprintf(stderr, "failed to make window current");
         return -1;
     }
-   
+
+    if ( _eglut->frame_sync == 0) {
+        eglSwapInterval( _eglut->dpy, 0 );
+        fprintf(stdout, " Swap Interval = 0 ! \n"); 
+    }
+
     /* Initialize the gears */
     gears_init();
     

@@ -5,19 +5,20 @@
 #include "EGL/egl.h"
 
 
-
 struct eglut_state {
     int window_width, window_height;
 
-   /* initialized by native display */
+    /* initialized by native display */
     EGLNativeDisplayType native_dpy;
-
+    EGLNativeWindowType window;
+    
     EGLDisplay dpy;
+    EGLSurface surface;
+
     EGLint major, minor;
     EGLContext context;
-    /* initialized by native display */
-    EGLNativeWindowType window;
-    EGLSurface surface;
+
+    int frame_sync;
 };
 
 
