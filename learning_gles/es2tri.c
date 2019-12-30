@@ -265,7 +265,7 @@ static void make_x_window( Display *x_dpy, EGLDisplay egl_dpy,
     // Configuration IDs must be small positive integers starting at 1 and 
     // ID assignment should be compact; that is, if there are N EGLConfigs 
     // defined by the EGL implementation, their configuration IDs should be 
-    // in the range [1, N ].
+    // in the range [1, N].
     //
     // Small gaps in the sequence are allowed, but should only occur when 
     // removing configurations defined in previous revisions of an EGL implementation.

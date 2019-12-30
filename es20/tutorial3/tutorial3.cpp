@@ -821,8 +821,6 @@ int main(int argc, char** argv)
 }
 ///////////////////////////////////////////////////////////////////////////////////
 
-    // vdkShowWindow(egl.window);
-
     XMapWindow( x_dpy, hWin );
 
     if (!eglMakeCurrent(egl_dpy, egl_surf, egl_surf, egl_ctx)) {

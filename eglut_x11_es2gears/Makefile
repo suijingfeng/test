@@ -13,7 +13,7 @@ LIBS = -lm -lX11 -lEGL -lGLESv2
 TARGET = es2gears
 
 
-ALL: es2gears
+ALL: clean es2gears
 
 es2gears:
 	$(COMPILE) $(CFLAGS) $(SRC) $(LIBS) -o $(TARGET)

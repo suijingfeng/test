@@ -38,8 +38,6 @@
 #define GL_GLEXT_PROTOTYPES
 #define EGL_EGLEXT_PROTOTYPES
 
-#define _GNU_SOURCE
-
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -73,7 +71,7 @@ typedef GLfloat GearVertex[GEAR_VERTEX_STRIDE];
  */
 struct gear {
    /** The array of vertices comprising the gear */
-   GearVertex *vertices;
+   GLfloat (*vertices)[GEAR_VERTEX_STRIDE];
    /** The number of vertices comprising the gear */
    int nvertices;
    /** The array of triangle strips comprising the gear */
@@ -111,8 +109,9 @@ static const GLfloat LightSourcePosition[4] = { 5.0, 5.0, 10.0, 1.0};
  * 
  * @return the operation error code
  */
-static GearVertex *
-vert(GearVertex *v, GLfloat x, GLfloat y, GLfloat z, GLfloat n[3])
+
+
+static GearVertex * vert(GLfloat (*v)[GEAR_VERTEX_STRIDE], GLfloat x, GLfloat y, GLfloat z, GLfloat n[3])
 {
    v[0][0] = x;
    v[0][1] = y;
@@ -123,6 +122,14 @@ vert(GearVertex *v, GLfloat x, GLfloat y, GLfloat z, GLfloat n[3])
 
    return v + 1;
 }
+
+
+static void compute_sincos(double val, double * const pS, double * const pC)
+{
+    *pS = sin(val);
+    *pC = cos(val);
+}
+
 
 /**
  *  Create a gear wheel.
@@ -135,30 +142,26 @@ vert(GearVertex *v, GLfloat x, GLfloat y, GLfloat z, GLfloat n[3])
  *  
  *  @return pointer to the constructed struct gear
  */
-static struct gear *
-create_gear(GLfloat inner_radius, GLfloat outer_radius, GLfloat width,
-      GLint teeth, GLfloat tooth_depth)
+static struct gear * create_gear( 
+        GLfloat inner_radius, GLfloat outer_radius, GLfloat width,
+        GLint teeth, GLfloat tooth_depth)
 {
-   GLfloat r0, r1, r2;
-   GLfloat da;
-   GearVertex *v;
-   struct gear *gear;
+
    double s[5], c[5];
    GLfloat normal[3];
    int cur_strip = 0;
-   int i;
 
    /* Allocate memory for the gear */
-   gear = malloc(sizeof *gear);
+   struct gear * gear = malloc(sizeof (struct gear));
    if (gear == NULL)
       return NULL;
 
    /* Calculate the radii used in the gear */
-   r0 = inner_radius;
-   r1 = outer_radius - tooth_depth / 2.0;
-   r2 = outer_radius + tooth_depth / 2.0;
+   GLfloat r0 = inner_radius;
+   GLfloat r1 = outer_radius - tooth_depth / 2.0;
+   GLfloat r2 = outer_radius + tooth_depth / 2.0;
 
-   da = 2.0 * M_PI / teeth / 4.0;
+   GLfloat da = 2.0 * M_PI / teeth / 4.0;
 
    /* Allocate memory for the triangle strip information */
    gear->nstrips = STRIPS_PER_TOOTH * teeth;
@@ -166,15 +169,18 @@ create_gear(GLfloat inner_radius, GLfloat outer_radius, GLfloat width,
 
    /* Allocate memory for the vertices */
    gear->vertices = calloc(VERTICES_PER_TOOTH * teeth, sizeof(*gear->vertices));
-   v = gear->vertices;
+   GearVertex * v = gear->vertices;
 
-   for (i = 0; i < teeth; i++) {
+   int i;
+
+   for (i = 0; i < teeth; ++i)
+   {
       /* Calculate needed sin/cos for varius angles */
-      sincos(i * 2.0 * M_PI / teeth, &s[0], &c[0]);
-      sincos(i * 2.0 * M_PI / teeth + da, &s[1], &c[1]);
-      sincos(i * 2.0 * M_PI / teeth + da * 2, &s[2], &c[2]);
-      sincos(i * 2.0 * M_PI / teeth + da * 3, &s[3], &c[3]);
-      sincos(i * 2.0 * M_PI / teeth + da * 4, &s[4], &c[4]);
+      compute_sincos(i * 2.0 * M_PI / teeth, &s[0], &c[0]);
+      compute_sincos(i * 2.0 * M_PI / teeth + da, &s[1], &c[1]);
+      compute_sincos(i * 2.0 * M_PI / teeth + da * 2, &s[2], &c[2]);
+      compute_sincos(i * 2.0 * M_PI / teeth + da * 3, &s[3], &c[3]);
+      compute_sincos(i * 2.0 * M_PI / teeth + da * 4, &s[4], &c[4]);
 
       /* A set of macros for making the creation of the gears easier */
 #define  GEAR_POINT(r, da) { (r) * c[(da)], (r) * s[(da)] }
@@ -219,7 +225,7 @@ create_gear(GLfloat inner_radius, GLfloat outer_radius, GLfloat width,
       };
 
       /* Front face */
-      START_STRIP;
+      gear->strips[cur_strip].first = v - gear->vertices;
       SET_NORMAL(0, 0, 1.0);
       v = GEAR_VERT(v, 0, +1);
       v = GEAR_VERT(v, 1, +1);
@@ -228,15 +234,23 @@ create_gear(GLfloat inner_radius, GLfloat outer_radius, GLfloat width,
       v = GEAR_VERT(v, 4, +1);
       v = GEAR_VERT(v, 5, +1);
       v = GEAR_VERT(v, 6, +1);
-      END_STRIP;
+      do {
+          int _tmp = (v - gear->vertices); 
+          gear->strips[cur_strip].count = _tmp - gear->strips[cur_strip].first;
+          cur_strip++;
+      } while (0);
 
       /* Inner face */
-      START_STRIP;
+      gear->strips[cur_strip].first = v - gear->vertices;;
       QUAD_WITH_NORMAL(4, 6);
-      END_STRIP;
+      do {
+          int _tmp = (v - gear->vertices); 
+          gear->strips[cur_strip].count = _tmp - gear->strips[cur_strip].first;
+          cur_strip++;
+      } while (0);
 
       /* Back face */
-      START_STRIP;
+      gear->strips[cur_strip].first = v - gear->vertices;
       SET_NORMAL(0, 0, -1.0);
       v = GEAR_VERT(v, 6, -1);
       v = GEAR_VERT(v, 5, -1);
@@ -245,24 +259,44 @@ create_gear(GLfloat inner_radius, GLfloat outer_radius, GLfloat width,
       v = GEAR_VERT(v, 2, -1);
       v = GEAR_VERT(v, 1, -1);
       v = GEAR_VERT(v, 0, -1);
-      END_STRIP;
+      do {
+          int _tmp = (v - gear->vertices); 
+          gear->strips[cur_strip].count = _tmp - gear->strips[cur_strip].first;
+          cur_strip++;
+      } while (0);
 
       /* Outer face */
-      START_STRIP;
+      gear->strips[cur_strip].first = v - gear->vertices;
       QUAD_WITH_NORMAL(0, 2);
-      END_STRIP;
+      do {
+          int _tmp = (v - gear->vertices); 
+          gear->strips[cur_strip].count = _tmp - gear->strips[cur_strip].first;
+          cur_strip++;
+      } while (0);
 
-      START_STRIP;
+      gear->strips[cur_strip].first = v - gear->vertices;
       QUAD_WITH_NORMAL(1, 0);
-      END_STRIP;
+      do {
+          int _tmp = (v - gear->vertices); 
+          gear->strips[cur_strip].count = _tmp - gear->strips[cur_strip].first;
+          cur_strip++;
+      } while (0);
 
-      START_STRIP;
+      gear->strips[cur_strip].first = v - gear->vertices;
       QUAD_WITH_NORMAL(3, 1);
-      END_STRIP;
+      do {
+          int _tmp = (v - gear->vertices); 
+          gear->strips[cur_strip].count = _tmp - gear->strips[cur_strip].first;
+          cur_strip++;
+      } while (0);
 
-      START_STRIP;
+      gear->strips[cur_strip].first = v - gear->vertices;
       QUAD_WITH_NORMAL(5, 3);
-      END_STRIP;
+      do {
+          int _tmp = (v - gear->vertices); 
+          gear->strips[cur_strip].count = _tmp - gear->strips[cur_strip].first;
+          cur_strip++;
+      } while (0);
    }
 
    gear->nvertices = (v - gear->vertices);
@@ -284,24 +318,59 @@ create_gear(GLfloat inner_radius, GLfloat outer_radius, GLfloat width,
  * @param m the first matrix to multiply
  * @param n the second matrix to multiply
  */
-static void
-multiply(GLfloat *m, const GLfloat *n)
+static void multiply(GLfloat *m, const GLfloat *n)
 {
-   GLfloat tmp[16];
-   const GLfloat *row, *column;
-   div_t d;
-   int i, j;
+    GLfloat tmp[16];
+    const GLfloat *row, *column;
+    div_t d;
+    int i, j;
 
-   for (i = 0; i < 16; i++) {
+    for (i = 0; i < 16; ++i)
+    {
       tmp[i] = 0;
       d = div(i, 4);
       row = n + d.quot * 4;
       column = m + d.rem;
-      for (j = 0; j < 4; j++)
+      for (j = 0; j < 4; ++j)
          tmp[i] += row[j] * column[j * 4];
-   }
-   memcpy(m, &tmp, sizeof tmp);
+    }
+
+    memcpy(m, &tmp, sizeof tmp);
 }
+
+static void MatrixMultiply4x4(const float A[16], const float B[16], float out[16])
+{
+    out[0] = A[0]*B[0] + A[1]*B[4] + A[2]*B[8] + A[3]*B[12];
+    out[1] = A[0]*B[1] + A[1]*B[5] + A[2]*B[9] + A[3]*B[13];
+    out[2] = A[0]*B[2] + A[1]*B[6] + A[2]*B[10] + A[3]*B[14];
+    out[3] = A[0]*B[3] + A[1]*B[7] + A[2]*B[11] + A[3]*B[15];
+
+    out[4] = A[4]*B[0] + A[5]*B[4] + A[6]*B[8] + A[7]*B[12];
+    out[5] = A[4]*B[1] + A[5]*B[5] + A[6]*B[9] + A[7]*B[13];
+    out[6] = A[4]*B[2] + A[5]*B[6] + A[6]*B[10] + A[7]*B[14];
+    out[7] = A[4]*B[3] + A[5]*B[7] + A[6]*B[11] + A[7]*B[15];
+
+    out[8] = A[8]*B[0] + A[9]*B[4] + A[10]*B[8] + A[11]*B[12];
+    out[9] = A[8]*B[1] + A[9]*B[5] + A[10]*B[9] + A[11]*B[13];
+    out[10] = A[8]*B[2] + A[9]*B[6] + A[10]*B[10] + A[11]*B[14];
+    out[11] = A[8]*B[3] + A[9]*B[7] + A[10]*B[11] + A[11]*B[15];
+
+    out[12] = A[12]*B[0] + A[13]*B[4] + A[14]*B[8] + A[15]*B[12];
+    out[13] = A[12]*B[1] + A[13]*B[5] + A[14]*B[9] + A[15]*B[13];
+    out[14] = A[12]*B[2] + A[13]*B[6] + A[14]*B[10] + A[15]*B[14];
+    out[15] = A[12]*B[3] + A[13]*B[7] + A[14]*B[11] + A[15]*B[15];
+}
+
+
+
+void Mat4Dump( const float in[16] )
+{
+    printf( "%3.5f %3.5f %3.5f %3.5f\n", in[ 0], in[ 4], in[ 8], in[12]);
+    printf( "%3.5f %3.5f %3.5f %3.5f\n", in[ 1], in[ 5], in[ 9], in[13]);
+    printf( "%3.5f %3.5f %3.5f %3.5f\n", in[ 2], in[ 6], in[10], in[14]);
+    printf( "%3.5f %3.5f %3.5f %3.5f\n", in[ 3], in[ 7], in[11], in[15]);
+}
+
 
 /** 
  * Rotates a 4x4 matrix.
@@ -312,20 +381,20 @@ multiply(GLfloat *m, const GLfloat *n)
  * @param y the y component of the direction to rotate to
  * @param z the z component of the direction to rotate to
  */
-static void
-rotate(GLfloat *m, GLfloat angle, GLfloat x, GLfloat y, GLfloat z)
+static void rotate(GLfloat *m, GLfloat angle, GLfloat x, GLfloat y, GLfloat z)
 {
-   double s, c;
+    double s, c;
 
-   sincos(angle, &s, &c);
-   GLfloat r[16] = {
-      x * x * (1 - c) + c,     y * x * (1 - c) + z * s, x * z * (1 - c) - y * s, 0,
-      x * y * (1 - c) - z * s, y * y * (1 - c) + c,     y * z * (1 - c) + x * s, 0, 
-      x * z * (1 - c) + y * s, y * z * (1 - c) - x * s, z * z * (1 - c) + c,     0,
-      0, 0, 0, 1
-   };
+    compute_sincos(angle, &s, &c);
+    
+    GLfloat r[16] = {
+        x * x * (1 - c) + c,     y * x * (1 - c) + z * s, x * z * (1 - c) - y * s, 0,
+        x * y * (1 - c) - z * s, y * y * (1 - c) + c,     y * z * (1 - c) + x * s, 0, 
+        x * z * (1 - c) + y * s, y * z * (1 - c) - x * s, z * z * (1 - c) + c,     0,
+        0, 0, 0, 1
+    };
 
-   multiply(m, r);
+    multiply(m, r);
 }
 
 
@@ -337,12 +406,23 @@ rotate(GLfloat *m, GLfloat angle, GLfloat x, GLfloat y, GLfloat z)
  * @param y the y component of the direction to translate to
  * @param z the z component of the direction to translate to
  */
-static void
-translate(GLfloat *m, GLfloat x, GLfloat y, GLfloat z)
+static void translate(GLfloat *m, GLfloat x, GLfloat y, GLfloat z)
 {
-   GLfloat t[16] = { 1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  x, y, z, 1 };
+    GLfloat t[16] = { 1, 0, 0, 0, 
+                      0, 1, 0, 0, 
+                      0, 0, 1, 0, 
+                      x, y, z, 1 };
 
-   multiply(m, t);
+    float out[16];
+
+    MatrixMultiply4x4(t, m, out);
+
+    printf(" Out: \n");
+    Mat4Dump(out);
+
+    multiply(m, t);
+    printf(" m: \n");
+    Mat4Dump(m);
 }
 
 /** 
@@ -350,34 +430,48 @@ translate(GLfloat *m, GLfloat x, GLfloat y, GLfloat z)
  * 
  * @param m the matrix make an identity matrix
  */
-static void
-identity(GLfloat *m)
+static void matIdentity(GLfloat * const m)
 {
-   GLfloat t[16] = {
+    GLfloat t[16] = {
       1.0, 0.0, 0.0, 0.0,
       0.0, 1.0, 0.0, 0.0,
       0.0, 0.0, 1.0, 0.0,
       0.0, 0.0, 0.0, 1.0,
-   };
+    };
 
-   memcpy(m, t, sizeof(t));
+    memcpy(m, t, sizeof(t));
 }
 
 /** 
  * Transposes a 4x4 matrix.
  *
  * @param m the matrix to transpose
- */
-static void 
-transpose(GLfloat *m)
+*/
+static void swapFloat(GLfloat *a, GLfloat *b)
 {
-   GLfloat t[16] = {
+    GLfloat temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+static void matTranspose(GLfloat *m)
+{
+    swapFloat(&m[1], &m[4]);
+    swapFloat(&m[2], &m[8]);
+    swapFloat(&m[3], &m[12]);
+    swapFloat(&m[6], &m[9]);
+    swapFloat(&m[7], &m[13]);
+    swapFloat(&m[11], &m[14]);
+
+/* 
+    GLfloat t[16] = {
       m[0], m[4], m[8],  m[12],
       m[1], m[5], m[9],  m[13],
       m[2], m[6], m[10], m[14],
-      m[3], m[7], m[11], m[15]};
+      m[3], m[7], m[11], m[15] };
 
-   memcpy(m, t, sizeof(t));
+    memcpy(m, t, sizeof(t));
+*/
 }
 
 /**
@@ -387,24 +481,26 @@ transpose(GLfloat *m)
  * Read http://www.gamedev.net/community/forums/topic.asp?topic_id=425118
  * for an explanation.
  */
-static void
-invert(GLfloat *m)
+static void matInvertRT(GLfloat *m)
 {
-   GLfloat t[16];
-   identity(t);
+    GLfloat t[16];
+    matIdentity(t);
 
-   // Extract and invert the translation part 't'. The inverse of a
-   // translation matrix can be calculated by negating the translation
-   // coordinates.
-   t[12] = -m[12]; t[13] = -m[13]; t[14] = -m[14];
+    // Extract and invert the translation part 't'. The inverse of a
+    // translation matrix can be calculated by negating the translation
+    // coordinates.
+    t[12] = -m[12]; 
+    t[13] = -m[13]; 
+    t[14] = -m[14];
 
-   // Invert the rotation part 'r'. The inverse of a rotation matrix is
-   // equal to its transpose.
-   m[12] = m[13] = m[14] = 0;
-   transpose(m);
+    // Invert the rotation part 'r'. The inverse of a rotation matrix is
+    // equal to its transpose.
+    m[12] = m[13] = m[14] = 0;
+    // row-major ???
+    matTranspose(m);
 
-   // inv(m) = inv(r) * inv(t)
-   multiply(m, t);
+    // inv(m) = inv(r) * inv(t)
+    multiply(m, t);
 }
 
 /** 
@@ -418,28 +514,29 @@ invert(GLfloat *m)
  */
 void perspective(GLfloat *m, GLfloat fovy, GLfloat aspect, GLfloat zNear, GLfloat zFar)
 {
-   GLfloat tmp[16];
-   identity(tmp);
 
-   double sine, cosine, cotangent, deltaZ;
-   GLfloat radians = fovy / 2 * M_PI / 180;
+    double sine, cosine;
+    GLfloat radians = fovy / 2 * M_PI / 180;
 
-   deltaZ = zFar - zNear;
-   sincos(radians, &sine, &cosine);
+    double deltaZ = zFar - zNear;
+    compute_sincos(radians, &sine, &cosine);
 
-   if ((deltaZ == 0) || (sine == 0) || (aspect == 0))
-      return;
+    if ((deltaZ == 0) || (sine == 0) || (aspect == 0))
+        return;
 
-   cotangent = cosine / sine;
+    double cotangent = cosine / sine;
 
-   tmp[0] = cotangent / aspect;
-   tmp[5] = cotangent;
-   tmp[10] = -(zFar + zNear) / deltaZ;
-   tmp[11] = -1;
-   tmp[14] = -2 * zNear * zFar / deltaZ;
-   tmp[15] = 0;
+    GLfloat tmp[16];
+    matIdentity(tmp);
 
-   memcpy(m, tmp, sizeof(tmp));
+    tmp[0] = cotangent / aspect;
+    tmp[5] = cotangent;
+    tmp[10] = -(zFar + zNear) / deltaZ;
+    tmp[11] = -1;
+    tmp[14] = -2 * zNear * zFar / deltaZ;
+    tmp[15] = 0;
+
+    memcpy(m, tmp, sizeof(tmp));
 }
 
 /**
@@ -452,72 +549,73 @@ void perspective(GLfloat *m, GLfloat fovy, GLfloat aspect, GLfloat zNear, GLfloa
  * @param angle the rotation angle of the gear
  * @param color the color of the gear
  */
-static void
-draw_gear(struct gear *gear, GLfloat *transform,
+static void draw_gear(struct gear *gear, GLfloat *transform,
       GLfloat x, GLfloat y, GLfloat angle, const GLfloat color[4])
 {
-   GLfloat model_view[16];
-   GLfloat normal_matrix[16];
-   GLfloat model_view_projection[16];
+    GLfloat model_view[16];
+    GLfloat normal_matrix[16];
+    GLfloat model_view_projection[16];
 
-   /* Translate and rotate the gear */
-   memcpy(model_view, transform, sizeof (model_view));
-   translate(model_view, x, y, 0);
-   rotate(model_view, 2 * M_PI * angle / 360.0, 0, 0, 1);
+    /* Translate and rotate the gear */
+    memcpy(model_view, transform, sizeof (model_view));
+    translate(model_view, x, y, 0);
+    rotate(model_view, 2 * M_PI * angle / 360.0, 0, 0, 1);
 
-   /* Create and set the ModelViewProjectionMatrix */
-   memcpy(model_view_projection, ProjectionMatrix, sizeof(model_view_projection));
-   multiply(model_view_projection, model_view);
+    /* Create and set the ModelViewProjectionMatrix */
+    memcpy(model_view_projection, ProjectionMatrix, sizeof(model_view_projection));
+    
+    multiply(model_view_projection, model_view);
 
-   glUniformMatrix4fv(ModelViewProjectionMatrix_location, 1, GL_FALSE,
+    glUniformMatrix4fv(ModelViewProjectionMatrix_location, 1, GL_FALSE,
                       model_view_projection);
 
-   /* 
-    * Create and set the NormalMatrix. It's the inverse transpose of the
-    * ModelView matrix.
-    */
-   memcpy(normal_matrix, model_view, sizeof (normal_matrix));
-   invert(normal_matrix);
-   transpose(normal_matrix);
-   glUniformMatrix4fv(NormalMatrix_location, 1, GL_FALSE, normal_matrix);
+    /* 
+     * Create and set the NormalMatrix. It's the inverse transpose of the
+     * ModelView matrix.
+     */
+    
+    memcpy(normal_matrix, model_view, sizeof (normal_matrix));
+    matInvertRT(normal_matrix);
+    matTranspose(normal_matrix);
+    glUniformMatrix4fv(NormalMatrix_location, 1, GL_FALSE, normal_matrix);
 
-   /* Set the gear color */
-   glUniform4fv(MaterialColor_location, 1, color);
+    /* Set the gear color */
+    glUniform4fv(MaterialColor_location, 1, color);
 
-   /* Set the vertex buffer object to use */
-   glBindBuffer(GL_ARRAY_BUFFER, gear->vbo);
+    /* Set the vertex buffer object to use */
+    glBindBuffer(GL_ARRAY_BUFFER, gear->vbo);
 
-   /* Set up the position of the attributes in the vertex buffer object */
-   glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
+    /* Set up the position of the attributes in the vertex buffer object */
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE,
          6 * sizeof(GLfloat), NULL);
-   glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE,
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE,
          6 * sizeof(GLfloat), (GLfloat *) 0 + 3);
 
-   /* Enable the attributes */
-   glEnableVertexAttribArray(0);
-   glEnableVertexAttribArray(1);
+    /* Enable the attributes */
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
 
-   /* Draw the triangle strips that comprise the gear */
-   int n;
-   for (n = 0; n < gear->nstrips; n++)
-      glDrawArrays(GL_TRIANGLE_STRIP, gear->strips[n].first, gear->strips[n].count);
+    /* Draw the triangle strips that comprise the gear */
+    int n;
+    for (n = 0; n < gear->nstrips; ++n)
+        glDrawArrays(GL_TRIANGLE_STRIP, gear->strips[n].first, gear->strips[n].count);
 
-   /* Disable the attributes */
-   glDisableVertexAttribArray(1);
-   glDisableVertexAttribArray(0);
+    /* Disable the attributes */
+    glDisableVertexAttribArray(1);
+    glDisableVertexAttribArray(0);
 }
 
 /** 
  * Draws the gears.
  */
-static void
-gears_draw(void)
+static void gears_draw(void)
 {
-   const static GLfloat red[4] = { 0.8, 0.1, 0.0, 1.0 };
-   const static GLfloat green[4] = { 0.0, 0.8, 0.2, 1.0 };
-   const static GLfloat blue[4] = { 0.2, 0.2, 1.0, 1.0 };
-   GLfloat transform[16];
-   identity(transform);
+    const static GLfloat red[4] = { 1.0, 0.0, 0.0, 1.0 };
+    const static GLfloat green[4] = { 0.0, 1.0, 0.0, 1.0 };
+    const static GLfloat blue[4] = { 0.0, 0.0, 1.0, 1.0 };
+
+    GLfloat transform[16];
+    matIdentity(transform);
 
    glClearColor(0.0, 0.0, 0.0, 0.0);
    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -540,8 +638,7 @@ gears_draw(void)
  * @param width the window width
  * @param height the window height
  */
-static void
-gears_reshape(int width, int height)
+static void gears_reshape(int width, int height)
 {
    /* Update the projection matrix */
    perspective(ProjectionMatrix, 60.0, width / (float)height, 1.0, 1024.0);
@@ -555,8 +652,7 @@ gears_reshape(int width, int height)
  * 
  * @param special the event to handle.
  */
-static void
-gears_special(int special)
+static void gears_special(int special)
 {
    switch (special) {
       case EGLUT_KEY_LEFT:
@@ -574,8 +670,7 @@ gears_special(int special)
    }
 }
 
-static void
-gears_idle(void)
+static void gears_idle(void)
 {
    static int frames = 0;
    static double tRot0 = -1.0, tRate0 = -1.0;
@@ -643,8 +738,7 @@ static const char fragment_shader[] =
 "    gl_FragColor = Color;\n"
 "}";
 
-static void
-gears_init(void)
+static void gears_init(void)
 {
    GLuint v, f, program;
    const char *p;
@@ -698,11 +792,11 @@ gears_init(void)
    gear3 = create_gear(1.3, 2.0, 0.5, 10, 0.7);
 }
 
-int
-main(int argc, char *argv[])
+
+int main(int argc, char *argv[])
 {
    /* Initialize the window */
-   eglutInitWindowSize(300, 300);
+   eglutInitWindowSize(640, 480);
    eglutInitAPIMask(EGLUT_OPENGL_ES2_BIT);
    eglutInit(argc, argv);
 

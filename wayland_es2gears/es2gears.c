@@ -35,6 +35,13 @@
  * Jul 13, 2010
  */
 
+/*
+ * Add makefile and make it stand alone
+ *
+ * suijingfeng
+ *
+ */
+
 #define GL_GLEXT_PROTOTYPES
 #define EGL_EGLEXT_PROTOTYPES
 
@@ -49,7 +56,7 @@
 #include <GLES2/gl2.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
-#include "eglut.h"
+#include "common.h"
 
 #define STRIPS_PER_TOOTH 7
 #define VERTICES_PER_TOOTH 34
@@ -83,6 +90,10 @@ struct gear {
    /** The Vertex Buffer Object holding the vertices in the graphics card */
    GLuint vbo;
 };
+
+
+static int s_iStartTime = 0;
+
 
 /** The view rotation [x, y, z] */
 static GLfloat view_rot[3] = { 20.0, 30.0, 0.0 };
@@ -507,11 +518,11 @@ draw_gear(struct gear *gear, GLfloat *transform,
    glDisableVertexAttribArray(0);
 }
 
+
 /** 
  * Draws the gears.
  */
-static void
-gears_draw(void)
+void gears_draw(void)
 {
    const static GLfloat red[4] = { 0.8, 0.1, 0.0, 1.0 };
    const static GLfloat green[4] = { 0.0, 0.8, 0.2, 1.0 };
@@ -534,31 +545,38 @@ gears_draw(void)
    draw_gear(gear3, transform, -3.1, 4.2, -2 * angle - 25.0, blue);
 }
 
-/** 
- * Handles a new window size or exposure.
- * 
- * @param width the window width
- * @param height the window height
- */
-static void
-gears_reshape(int width, int height)
-{
-   /* Update the projection matrix */
-   perspective(ProjectionMatrix, 60.0, width / (float)height, 1.0, 1024.0);
-
-   /* Set the viewport */
-   glViewport(0, 0, (GLint) width, (GLint) height);
-}
 
 /** 
  * Handles special eglut events.
  * 
  * @param special the event to handle.
  */
-static void
-gears_special(int special)
+enum {
+   /* function keys */
+   EGLUT_KEY_F1,
+   EGLUT_KEY_F2,
+   EGLUT_KEY_F3,
+   EGLUT_KEY_F4,
+   EGLUT_KEY_F5,
+   EGLUT_KEY_F6,
+   EGLUT_KEY_F7,
+   EGLUT_KEY_F8,
+   EGLUT_KEY_F9,
+   EGLUT_KEY_F10,
+   EGLUT_KEY_F11,
+   EGLUT_KEY_F12,
+
+   /* directional keys */
+   EGLUT_KEY_LEFT,
+   EGLUT_KEY_UP,
+   EGLUT_KEY_RIGHT,
+   EGLUT_KEY_DOWN,
+};
+
+
+void gears_process_event(int special)
 {
-   switch (special) {
+    switch (special) {
       case EGLUT_KEY_LEFT:
          view_rot[1] += 5.0;
          break;
@@ -571,40 +589,58 @@ gears_special(int special)
       case EGLUT_KEY_DOWN:
          view_rot[0] -= 5.0;
          break;
-   }
+    }
 }
 
-static void
-gears_idle(void)
+
+/* return current time (in milliseconds) */
+static int getTimeMilliseconds(void)
 {
-   static int frames = 0;
-   static double tRot0 = -1.0, tRate0 = -1.0;
-   double dt, t = eglutGet(EGLUT_ELAPSED_TIME) / 1000.0;
+   struct timeval tv;
+#ifdef __VMS
+   (void) gettimeofday(&tv, NULL );
+#else
+   struct timezone tz;
+   (void) gettimeofday(&tv, &tz);
+#endif
+   return tv.tv_sec * 1000 + tv.tv_usec / 1000;
+}
 
-   if (tRot0 < 0.0)
+
+
+void gears_idle(void)
+{
+    static int frames = 0;
+    static double tRot0 = -1.0;
+    static double tRate0 = -1.0;
+
+    double t = ( getTimeMilliseconds() - s_iStartTime ) / 1000.0;
+
+    if (tRot0 < 0.0)
       tRot0 = t;
-   dt = t - tRot0;
-   tRot0 = t;
 
-   /* advance rotation for next frame */
-   angle += 70.0 * dt;  /* 70 degrees per second */
-   if (angle > 3600.0)
-      angle -= 3600.0;
+    double dt = t - tRot0;
+    tRot0 = t;
 
-   eglutPostRedisplay();
-   frames++;
+    /* advance rotation for next frame */
+    angle += 70.0 * dt;  /* 70 degrees per second */
+    if (angle > 3600.0)
+        angle -= 3600.0;
 
-   if (tRate0 < 0.0)
-      tRate0 = t;
-   if (t - tRate0 >= 5.0) {
+    ++frames;
+
+    if (tRate0 < 0.0)
+        tRate0 = t;
+    if (t - tRate0 >= 5.0) {
       GLfloat seconds = t - tRate0;
       GLfloat fps = frames / seconds;
       printf("%d frames in %3.1f seconds = %6.3f FPS\n", frames, seconds,
             fps);
       tRate0 = t;
       frames = 0;
-   }
+    }
 }
+
 
 static const char vertex_shader[] =
 "attribute vec3 position;\n"
@@ -634,6 +670,7 @@ static const char vertex_shader[] =
 "    gl_Position = ModelViewProjectionMatrix * vec4(position, 1.0);\n"
 "}";
 
+
 static const char fragment_shader[] =
 "precision mediump float;\n"
 "varying vec4 Color;\n"
@@ -643,8 +680,8 @@ static const char fragment_shader[] =
 "    gl_FragColor = Color;\n"
 "}";
 
-static void
-gears_init(void)
+
+static void gears_init(void)
 {
    GLuint v, f, program;
    const char *p;
@@ -677,7 +714,7 @@ gears_init(void)
    glBindAttribLocation(program, 1, "normal");
 
    glLinkProgram(program);
-   glGetProgramInfoLog(program, sizeof msg, NULL, msg);
+   glGetProgramInfoLog(program, sizeof(msg), NULL, msg);
    printf("info: %s\n", msg);
 
    /* Enable the shaders */
@@ -692,32 +729,114 @@ gears_init(void)
    /* Set the LightSourcePosition uniform which is constant throught the program */
    glUniform4fv(LightSourcePosition_location, 1, LightSourcePosition);
 
-   /* make the gears */
-   gear1 = create_gear(1.0, 4.0, 1.0, 20, 0.7);
-   gear2 = create_gear(0.5, 2.0, 2.0, 10, 0.7);
-   gear3 = create_gear(1.3, 2.0, 0.5, 10, 0.7);
+    /* make the gears */
+    gear1 = create_gear(1.0, 4.0, 1.0, 20, 0.7);
+    gear2 = create_gear(0.5, 2.0, 2.0, 10, 0.7);
+    gear3 = create_gear(1.3, 2.0, 0.5, 10, 0.7);
 }
 
-int
-main(int argc, char *argv[])
+extern struct eglut_state *_eglut;
+
+
+int main(int argc, char *argv[])
 {
-   /* Initialize the window */
-   eglutInitWindowSize(300, 300);
-   eglutInitAPIMask(EGLUT_OPENGL_ES2_BIT);
-   eglutInit(argc, argv);
+    const char *title = "wayland_gles2_gears";
 
-   eglutCreateWindow("es2gears");
+    /* Initialize the window */
+    _eglut->window_width = 300;
+    _eglut->window_height = 300;
 
-   /* Set up eglut callback functions */
-   eglutIdleFunc(gears_idle);
-   eglutReshapeFunc(gears_reshape);
-   eglutDisplayFunc(gears_draw);
-   eglutSpecialFunc(gears_special);
+    _eglut->native_dpy = (EGLNativeDisplayType) WL_InitDisplay();
+    _eglut->dpy = eglGetDisplay(_eglut->native_dpy);
 
-   /* Initialize the gears */
-   gears_init();
+    if (!eglInitialize(_eglut->dpy, &_eglut->major, &_eglut->minor)) {
+        fprintf(stderr, " Failed to initialize EGL display. \n");
+    }
+    else
+    {
+        printf("EGL Version: %d.%d \n", _eglut->major, _eglut->minor);
+    }
 
-   eglutMainLoop();
+    printf("EGL_VERSION = %s\n",
+            eglQueryString(_eglut->dpy, EGL_VERSION));
+    printf("EGL_VENDOR = %s\n",
+            eglQueryString(_eglut->dpy, EGL_VENDOR));
+    printf("EGL_EXTENSIONS = %s\n",
+            eglQueryString(_eglut->dpy, EGL_EXTENSIONS));
+    printf("EGL_CLIENT_APIS = %s\n",
+            eglQueryString(_eglut->dpy, EGL_CLIENT_APIS));
 
-   return 0;
+    EGLConfig config;
+    EGLint num_configs;
+
+    EGLint config_attribs[] = {
+        EGL_RED_SIZE, 8,
+        EGL_GREEN_SIZE, 8,
+        EGL_BLUE_SIZE, 8,
+        EGL_DEPTH_SIZE, 24,
+        EGL_SURFACE_TYPE, EGL_WINDOW_BIT,
+        EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+        EGL_NONE
+    };
+
+    if( EGL_TRUE == eglGetConfigs( _eglut->dpy, NULL, 0, &num_configs ) )
+    {
+        fprintf(stdout, "number of config : %d \n", num_configs); 
+    }
+
+    // assert( 0 != num_configs );
+
+    if ( !eglChooseConfig( _eglut->dpy, config_attribs, &config, 1, &num_configs) )
+    {
+        fprintf(stderr, " Failed to choose a config. \n");
+    }
+
+
+    eglBindAPI(EGL_OPENGL_ES_API);
+
+
+    EGLint context_attribs[] = {
+        EGL_CONTEXT_CLIENT_VERSION, 2,
+        EGL_NONE
+    };
+    
+    _eglut->context = eglCreateContext(_eglut->dpy, config, EGL_NO_CONTEXT, context_attribs);
+
+    if ( _eglut->context == NULL) {
+        fprintf(stderr, " Failed to create context. \n");
+    }
+
+
+    _eglut->window = ( EGLNativeWindowType ) WL_CreateWindowForEgl( 
+            title, _eglut->window_width, _eglut->window_height );
+
+
+    // It then casts the wl_egl_window pointer to a NativeWindowType pointer 
+    // and passes it to eglCreateWindowSurface(). 
+    _eglut->surface = eglCreateWindowSurface( _eglut->dpy, config, _eglut->window, NULL );
+
+    if (_eglut->surface == EGL_NO_SURFACE) {
+        fprintf(stderr, "failed to create surface");
+    }
+
+    if (!eglMakeCurrent( _eglut->dpy, _eglut->surface, _eglut->surface, _eglut->context ))
+    {
+        fprintf(stderr, "failed to make window current");
+        return -1;
+    }
+   
+    /* Initialize the gears */
+    gears_init();
+    
+    /* Update the projection matrix */
+    perspective(ProjectionMatrix, 60.0, _eglut->window_width / (float)_eglut->window_height, 1.0, 1024.0);
+
+    /* Set the viewport */
+    glViewport(0, 0, (GLint) _eglut->window_width, (GLint) _eglut->window_height);
+
+    s_iStartTime = getTimeMilliseconds();
+
+    WL_EventLoop();
+   
+    return 0;
 }
