@@ -522,27 +522,27 @@ draw_gear(struct gear *gear, GLfloat *transform,
 /** 
  * Draws the gears.
  */
-void gears_draw(void)
+void gears_draw( void )
 {
-   const static GLfloat red[4] = { 0.8, 0.1, 0.0, 1.0 };
-   const static GLfloat green[4] = { 0.0, 0.8, 0.2, 1.0 };
-   const static GLfloat blue[4] = { 0.2, 0.2, 1.0, 1.0 };
-   GLfloat transform[16];
-   identity(transform);
+    const static GLfloat red[4] = { 0.8, 0.1, 0.0, 1.0 };
+    const static GLfloat green[4] = { 0.0, 0.8, 0.2, 1.0 };
+    const static GLfloat blue[4] = { 0.2, 0.2, 1.0, 1.0 };
+    GLfloat transform[16];
+    identity(transform);
 
-   glClearColor(0.0, 0.0, 0.0, 0.0);
-   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glClearColor(0.0, 0.0, 0.0, 0.0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-   /* Translate and rotate the view */
-   translate(transform, 0, 0, -20);
-   rotate(transform, 2 * M_PI * view_rot[0] / 360.0, 1, 0, 0);
-   rotate(transform, 2 * M_PI * view_rot[1] / 360.0, 0, 1, 0);
-   rotate(transform, 2 * M_PI * view_rot[2] / 360.0, 0, 0, 1);
+    /* Translate and rotate the view */
+    translate(transform, 0, 0, -20);
+    rotate(transform, 2 * M_PI * view_rot[0] / 360.0, 1, 0, 0);
+    rotate(transform, 2 * M_PI * view_rot[1] / 360.0, 0, 1, 0);
+    rotate(transform, 2 * M_PI * view_rot[2] / 360.0, 0, 0, 1);
 
-   /* Draw the gears */
-   draw_gear(gear1, transform, -3.0, -2.0, angle, red);
-   draw_gear(gear2, transform, 3.1, -2.0, -2 * angle - 9.0, green);
-   draw_gear(gear3, transform, -3.1, 4.2, -2 * angle - 25.0, blue);
+    /* Draw the gears */
+    draw_gear(gear1, transform, -3.0, -2.0, angle, red);
+    draw_gear(gear2, transform, 3.1, -2.0, -2 * angle - 9.0, green);
+    draw_gear(gear3, transform, -3.1, 4.2, -2 * angle - 25.0, blue);
 }
 
 
@@ -824,7 +824,10 @@ int main(int argc, char *argv[])
         fprintf(stderr, "failed to make window current");
         return -1;
     }
-   
+
+    // useless ...
+    eglSwapInterval(_eglut->dpy , 0);
+
     /* Initialize the gears */
     gears_init();
     

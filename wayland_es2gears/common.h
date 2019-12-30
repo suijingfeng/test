@@ -26,4 +26,8 @@ void WL_EventLoop( void );
 struct wl_egl_window * WL_CreateWindowForEgl(const char *title, int w, int h);
 struct wl_display * WL_InitDisplay(void);
 
+
+void gears_idle(void);
+void gears_draw(void);
+
 #endif /* EGLUT_H */
