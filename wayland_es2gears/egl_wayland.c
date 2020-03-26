@@ -16,26 +16,14 @@ struct display {
    struct wl_display *display;
    struct wl_compositor *compositor;
    struct wl_shell *shell;
-   //
-   // wl_seat - group of input devices
-   // 
-   // A seat is a group of keyboards, pointer and touch devices. This object is published
-   // as a global during start up, or when such a device is hot plugged. A seat typically
-   // has a pointer and maintains a keyboard focus and a pointer focus.
-   //
-   struct wl_seat * seat;
-
    uint32_t mask;
 };
 
-
 struct window {
    struct wl_surface *surface;
-   // wl_shell_surface - desktop style meta data interface
    struct wl_shell_surface *shell_surface;
    struct wl_callback *callback;
 };
-
 
 static struct display display = {0, };
 static struct window window = {0, };
@@ -68,11 +56,7 @@ static void fnAddGlobalObjectAnnouncer(
     {
         pD->shell = wl_registry_bind( registry, id, &wl_shell_interface, 1);
     }
-    else if (strcmp(interface, "wl_seat") == 0) {
-	pD->seat = wl_registry_bind( registry, id, &wl_seat_interface, 1);
-	// wl_seat_add_listener(seat, &seat_listener, NULL);
-    }
-
+    
     // A registry object has a string name, the interface and an integer id, the id.
     // The id is what is used in further calls, while the interface allows the program
     // to work out which registry object it is. 
@@ -139,14 +123,16 @@ static const struct wl_callback_listener sc_sync_listener = {
 static struct eglut_state _eglut_state = {
    .window_width = 300,
    .window_height = 300,
+   .frame_sync = 1
 };
 
 struct eglut_state *_eglut = &_eglut_state;
 ////////////////////////////////
 
 
-struct wl_display * WL_InitDisplay( void )
+struct wl_display * WL_InitDisplay(void)
 {
+
     // wl_display_connect connects to a Wayland socket that was previously 
     // opened by a Wayland server. The server socket must be placed in 
     // XDG_RUNTIME_DIR when WAYLAND_DISPLAY (or name, see below) is a simple 
@@ -174,7 +160,7 @@ struct wl_display * WL_InitDisplay( void )
     //
     // Manual construction of the socket path must account for the possibility
     // that WAYLAND_DISPLAY contains an absolute path.
-    display.display = wl_display_connect( NULL );
+    display.display = wl_display_connect(NULL);
 
     //
     // This establishes a connection to the Wayland server. The most important
@@ -335,7 +321,7 @@ struct wl_display * WL_InitDisplay( void )
         // The role of a surface is undefined by default - it’s just a place to put pixels.
         // In order to get the compositor to do anything with them, you must give the
         // surface a role. Roles could be anything - desktop background, system tray, etc - 
-        // but the most common role is a shell surface.
+        // but the most common role is a shell surface. 
         //
         // To create these, you take your wl_surface and hand it to the wl_shell interface.
         // You’ll get back a wl_shell_surface resource, which defines your surface’s purpose
@@ -370,14 +356,14 @@ struct wl_display * WL_InitDisplay( void )
         // and creating Wayland globals for them with wl_global_create:
         //
         // struct wl_global *global = wl_global_create(
-        //     display, &wl_output_interface,
-        //     1,
+        //     display, &wl_output_interface, 
+        //     1 ,
         //     our_data, wl_output_bind );
         //
         // The wl_output_bind function here is going to be called when a client attempts to bind
         // to this resource via wl_registry_bind, and will look something like this:
         //
-        // void wl_output_bind( struct wl_client *client, void *our_data, uint32_t their_version,
+        // void wl_output_bind( struct wl_client *client, void *our_data, uint32_t their_version, 
         //      uint32_t id )
         // {
         //     struct wl_resource *resource = wl_resource_create_checked(
@@ -386,6 +372,7 @@ struct wl_display * WL_InitDisplay( void )
         // }
         // 
         // Some of the resources a server is going to be managing might include:
+        //
         //
         //  DRM state for direct access to outputs
         //  GLES context (or another GL implementation) for rendering
@@ -402,27 +389,18 @@ struct wl_display * WL_InitDisplay( void )
 
 static void wl_draw(void *data, struct wl_callback *callback, uint32_t time);
 
-// Content written to a surface's buffer will stay unchanged until overwritten by the client.
-// The compositor is responsible for manipulating and displaying this content, so if, say,
-// a portion of the client's window is obscured and then uncovered, the compositor will look
-// after redrawing it without the client needing to do anything. This is different to the X
-// Window model, where the client has to redraw areas 'damaged' by the windows of other clients.
-//
-// On the other had, if the client redraws content in an area, then it has to inform the
-// compositor of which part to redraw. The wl_surface_commit tells the compositor to redraw,
-// while the wl_surface_damage tells the compositor which areas to redraw.
-//
-// In this demo we redrew the entire window surface and consequently damaged the entire
-// window surface as well. We can get an interesting effect by damaging a smaller
-// rectangle each time, so that the undamaged area is not redrawn by the compositor.
-// 
+
 static const struct wl_callback_listener sc_frame_listener = {
    wl_draw
 };
 
 
+extern void gears_idle(void);
+extern void gears_draw(void);
+
 static void wl_draw(void *data, struct wl_callback * pCallback, uint32_t time)
 {
+
     struct window * pWindow = (struct window *)data;
 
     if ( pCallback ) {
@@ -436,7 +414,7 @@ static void wl_draw(void *data, struct wl_callback * pCallback, uint32_t time)
     // redrawing operations, and driving animations. The notification will only be
     // posted for one frame unless requested again.
     //
-    pWindow->callback = wl_surface_frame( pWindow->surface );
+    // pWindow->callback = wl_surface_frame( pWindow->surface );
     //
     // A Wayland server will render buffers. This will take some time.
     // If an attempt is made by a client to ask for a buffer to be rendered prematurely,
@@ -447,7 +425,7 @@ static void wl_draw(void *data, struct wl_callback * pCallback, uint32_t time)
     // This is done by first getting a wl_callback by wl_surface_frame 
     // and then adding a listener by wl_callback_add_listener
     //
-    wl_callback_add_listener( pWindow->callback, &sc_frame_listener, pWindow );
+    // wl_callback_add_listener( pWindow->callback, &sc_frame_listener, pWindow );
 
     // struct wl_callback * pFrameCallback = wl_surface_frame( pWindow->surface );
     // wl_callback_add_listener(pFrameCallback, &frame_listener, pWindow);
@@ -457,142 +435,13 @@ static void wl_draw(void *data, struct wl_callback * pCallback, uint32_t time)
 
 
 
-
 void WL_EventLoop(void)
 {
-    struct pollfd pollfd;
+    while ( 1 ) {
+        gears_idle();
 
-    // Get a display context's file descriptor 
-    // Return the file descriptor associated with a display
-    // so it can be integrated into the client's main loop. 
-    pollfd.fd = wl_display_get_fd( display.display );
-    pollfd.events = POLLIN;
-    pollfd.revents = 0;
-
-    while (1)
-    {
-        /* If we need to flush but can't, don't do anything at all which could
-         * push further events into the socket. */
-        if ( !(pollfd.events & POLLOUT) )
-        {
-            // Dispatch main queue events without reading from the display fd
-            // Returns the number of dispatched events or -1 on failure 
-            // This function dispatches events on the main event queue. 
-            // It does not attempt to read the display fd and simply returns zero
-            // if the main queue is empty, i.e., it doesn't block.
-            //
-            // This is necessary when a client's main loop wakes up on some fd
-            // other than the display fd (network socket, timer fd, etc) and
-            // calls wl_display_dispatch_queue() from that callback. This may 
-            // queue up events in the main queue while reading all data from
-            // the display fd. When the main thread returns to the main loop
-            // to block, the display fd no longer has data, causing a call to
-            // poll(2) (or similar functions) to block indefinitely, even though
-            // there are events ready to dispatch.
-            //
-            // To proper integrate the wayland display fd into a main loop,
-            // the client should always call wl_display_dispatch_pending()
-            // and then wl_display_flush() prior to going back to sleep.
-            // At that point, the fd typically doesn't have data so attempting
-            // I/O could block, but events queued up on the main queue should
-            // be dispatched.
-            //
-            // A real-world example is a main loop that wakes up on a timerfd
-            // (or a sound card fd becoming writable, for example in a video 
-            // player), which then triggers GL rendering and eventually 
-            // eglSwapBuffers(). 
-            //
-            // eglSwapBuffers() may call wl_display_dispatch_queue() if it 
-            // didn't receive the frame event for the previous frame, and as
-            // such queue events in the main queue. 
-            wl_display_dispatch_pending( display.display );
-
-            gears_idle();
-            // Client wants to redraw, but we have no frame event to trigger
-            // the redraw; kick start it by redrawing immediately.
-            //
-            if ( !window.callback ) {
-                wl_draw(&window, NULL, 0);
-            }
-        }
-
-        // A wl_display object handles all the data sent from and to the compositor.
-        // When a wl_proxy marshals a request, it will write its wire representation
-        // to the display's write buffer. The data is sent to the compositor when the
-        // client calls wl_display_flush().
-        //
-        // Incoming data is handled in two steps: queueing and dispatching. 
-        // In the queue step, the data coming from the display fd is interpreted and
-        // added to a queue. On the dispatch step, the handler for the incoming event
-        // set by the client on the corresponding wl_proxy is called. 
-        //
-        // A wl_display has at least one event queue, called the main queue. 
-        // Clients can create additional event queues with wl_display_create_queue()
-        // and assign wl_proxy's to it. Events occurring in a particular proxy are
-        // always queued in its assigned queue. 
-        //
-        // A client can ensure that a certain assumption, such as holding a lock or
-        // running from a given thread, is true when a proxy event handler is called
-        // by assigning that proxy to an event queue and making sure that this queue
-        // is only dispatched when the assumption holds.
-        //
-        // The main queue is dispatched by calling wl_display_dispatch(). This will
-        // dispatch any events queued on the main queue and attempt to read from the
-        // display fd if its empty. Events read are then queued on the appropriate
-        // queues according to the proxy assignment. Calling that function makes the
-        // calling thread the main thread.
-        //
-        // A user created queue is dispatched with wl_display_dispatch_queue(). 
-        // If there are no events to dispatch this function will block. If this is 
-        // called by the main thread, this will attempt to read data from the display
-        // fd and queue any events on the appropriate queues. If calling from any 
-        // other thread, the function will block until the main thread queues an
-        // event on the queue being dispatched.
-        //
-        // Send all buffered requests on the display to the server 
-        // wl_display_flush() never blocks. It will write as much data as possible,
-        // but if all data could not be written, errno will be set to EAGAIN and -1
-        // returned. In that case, use poll on the display file descriptor to wait
-        // for it to become writable again.
-        int ret = wl_display_flush( display.display );
-        if ( ret < 0 && errno != EAGAIN ) {
-            break; 
-            fprintf(stderr,  " Fatal error: socket is broken! \n");
-        }
-        else if (ret < 0 && errno == EAGAIN) {
-            pollfd.events |= POLLOUT; 
-            printf(" Need to wait until we can flush. \n");
-        }
-        else {
-            pollfd.events &= ~POLLOUT;
-            // printf(" successfully flushed. \n");
-        }
-        
-        if ( poll(&pollfd, 1, -1) == -1 )
-           break;
-
-        if ( pollfd.revents & (POLLERR | POLLHUP))
-           break;
-
-        if (pollfd.events & POLLOUT) {
-	   if (!(pollfd.revents & POLLOUT))
-              continue; /* block until we can flush */
-           pollfd.events &= ~POLLOUT;
-        }
-
-        if (pollfd.revents & POLLIN) {
-           ret = wl_display_dispatch(display.display);
-           if (ret == -1)
-               break;
-        }
-
-        ret = wl_display_flush(display.display);
-        if (ret < 0 && errno != EAGAIN)
-           break; /* fatal error; socket is broken */
-        else if (ret < 0 && errno == EAGAIN)
-           pollfd.events |= POLLOUT; /* need to wait until we can flush */
-        else
-           pollfd.events &= ~POLLOUT; /* successfully flushed */
+	wl_display_dispatch_pending(display.display);
+	wl_draw(&window, NULL, 0);
     }
 }
 
@@ -611,24 +460,8 @@ struct wl_egl_window * WL_CreateWindowForEgl(const char *title, int w, int h)
     //
     // Region objects are used to describe the opaque and input regions of a surface.
     //
-    // The opaque region is an optimization hint for the compositor that lets it
-    // optimize the redrawing of content behind opaque regions. Setting an opaque
-    // region is not required for correct behaviour, but marking transparent content
-    // as opaque will result in repaint artifacts.
-    //
     struct wl_region * pRegion = wl_compositor_create_region( display.compositor );
-    // The opaque region is specified in surface-local coordinates. The compositor 
-    // ignores the parts of the opaque region that fall outside of the surface.
-    // Opaque region is double-buffered state, see wl_surface.commit.
     wl_region_add( pRegion, 0, 0, w, h );
-    // wl_surface.set_opaque_region changes the pending opaque region. 
-    // wl_surface.commit copies the pending region to the current region. 
-    // Otherwise, the pending and current regions are never changed.
-    //
-    // The initial value for an opaque region is empty. Setting the pending opaque
-    // region has copy semantics, and the wl_region object can be destroyed immediately.
-    // A NULL wl_region causes the pending opaque region to be set to empty.
-    //
     wl_surface_set_opaque_region( window.surface, pRegion );
     wl_region_destroy( pRegion );
 
@@ -646,8 +479,7 @@ struct wl_egl_window * WL_CreateWindowForEgl(const char *title, int w, int h)
     // Then, when it wants to create a window, it calls wl_egl_window_create() with 
     // the surface that it wants to use along with the size to get a wl_egl_window pointer.
     
-    // make the surface a top level surface
-    // nearly useless on this demo ?
+    // nearly useless ?
     wl_shell_surface_set_toplevel( window.shell_surface );
     
     return wl_egl_window_create( window.surface, w, h );
@@ -662,14 +494,11 @@ void eglutDestroyWindow( void )
 
     wl_egl_window_destroy( _eglut->window );
 
-    // An interface implemented by a wl_surface.
-    // On server side the object is automatically destroyed when the related wl_surface is destroyed.
-    // On client side, wl_shell_surface_destroy() must be called before destroying the wl_surface object. 
     wl_shell_surface_destroy( window.shell_surface );
     wl_surface_destroy( window.surface );
 
     if ( window.callback )
-        wl_callback_destroy( window.callback );
+        wl_callback_destroy(window.callback);
 
     eglDestroyContext(_eglut->dpy, _eglut->context);
 }

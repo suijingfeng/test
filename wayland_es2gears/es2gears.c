@@ -42,10 +42,8 @@
  *
  */
 
-#define GL_GLEXT_PROTOTYPES
-#define EGL_EGLEXT_PROTOTYPES
-
-#define _GNU_SOURCE
+// #define GL_GLEXT_PROTOTYPES
+// #define EGL_EGLEXT_PROTOTYPES
 
 #include <math.h>
 #include <stdlib.h>
@@ -55,8 +53,9 @@
 #include <unistd.h>
 #include <GLES2/gl2.h>
 #include <EGL/egl.h>
-#include <EGL/eglext.h>
+
 #include "common.h"
+#include "mat_math.h"
 
 #define STRIPS_PER_TOOTH 7
 #define VERTICES_PER_TOOTH 34
@@ -181,11 +180,11 @@ create_gear(GLfloat inner_radius, GLfloat outer_radius, GLfloat width,
 
    for (i = 0; i < teeth; i++) {
       /* Calculate needed sin/cos for varius angles */
-      sincos(i * 2.0 * M_PI / teeth, &s[0], &c[0]);
-      sincos(i * 2.0 * M_PI / teeth + da, &s[1], &c[1]);
-      sincos(i * 2.0 * M_PI / teeth + da * 2, &s[2], &c[2]);
-      sincos(i * 2.0 * M_PI / teeth + da * 3, &s[3], &c[3]);
-      sincos(i * 2.0 * M_PI / teeth + da * 4, &s[4], &c[4]);
+      compute_sin_cos(i * 2.0 * M_PI / teeth, &s[0], &c[0]);
+      compute_sin_cos(i * 2.0 * M_PI / teeth + da, &s[1], &c[1]);
+      compute_sin_cos(i * 2.0 * M_PI / teeth + da * 2, &s[2], &c[2]);
+      compute_sin_cos(i * 2.0 * M_PI / teeth + da * 3, &s[3], &c[3]);
+      compute_sin_cos(i * 2.0 * M_PI / teeth + da * 4, &s[4], &c[4]);
 
       /* A set of macros for making the creation of the gears easier */
 #define  GEAR_POINT(r, da) { (r) * c[(da)], (r) * s[(da)] }
@@ -287,171 +286,7 @@ create_gear(GLfloat inner_radius, GLfloat outer_radius, GLfloat width,
    return gear;
 }
 
-/** 
- * Multiplies two 4x4 matrices.
- * 
- * The result is stored in matrix m.
- * 
- * @param m the first matrix to multiply
- * @param n the second matrix to multiply
- */
-static void
-multiply(GLfloat *m, const GLfloat *n)
-{
-   GLfloat tmp[16];
-   const GLfloat *row, *column;
-   div_t d;
-   int i, j;
 
-   for (i = 0; i < 16; i++) {
-      tmp[i] = 0;
-      d = div(i, 4);
-      row = n + d.quot * 4;
-      column = m + d.rem;
-      for (j = 0; j < 4; j++)
-         tmp[i] += row[j] * column[j * 4];
-   }
-   memcpy(m, &tmp, sizeof tmp);
-}
-
-/** 
- * Rotates a 4x4 matrix.
- * 
- * @param[in,out] m the matrix to rotate
- * @param angle the angle to rotate
- * @param x the x component of the direction to rotate to
- * @param y the y component of the direction to rotate to
- * @param z the z component of the direction to rotate to
- */
-static void
-rotate(GLfloat *m, GLfloat angle, GLfloat x, GLfloat y, GLfloat z)
-{
-   double s, c;
-
-   sincos(angle, &s, &c);
-   GLfloat r[16] = {
-      x * x * (1 - c) + c,     y * x * (1 - c) + z * s, x * z * (1 - c) - y * s, 0,
-      x * y * (1 - c) - z * s, y * y * (1 - c) + c,     y * z * (1 - c) + x * s, 0, 
-      x * z * (1 - c) + y * s, y * z * (1 - c) - x * s, z * z * (1 - c) + c,     0,
-      0, 0, 0, 1
-   };
-
-   multiply(m, r);
-}
-
-
-/** 
- * Translates a 4x4 matrix.
- * 
- * @param[in,out] m the matrix to translate
- * @param x the x component of the direction to translate to
- * @param y the y component of the direction to translate to
- * @param z the z component of the direction to translate to
- */
-static void
-translate(GLfloat *m, GLfloat x, GLfloat y, GLfloat z)
-{
-   GLfloat t[16] = { 1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  x, y, z, 1 };
-
-   multiply(m, t);
-}
-
-/** 
- * Creates an identity 4x4 matrix.
- * 
- * @param m the matrix make an identity matrix
- */
-static void
-identity(GLfloat *m)
-{
-   GLfloat t[16] = {
-      1.0, 0.0, 0.0, 0.0,
-      0.0, 1.0, 0.0, 0.0,
-      0.0, 0.0, 1.0, 0.0,
-      0.0, 0.0, 0.0, 1.0,
-   };
-
-   memcpy(m, t, sizeof(t));
-}
-
-/** 
- * Transposes a 4x4 matrix.
- *
- * @param m the matrix to transpose
- */
-static void 
-transpose(GLfloat *m)
-{
-   GLfloat t[16] = {
-      m[0], m[4], m[8],  m[12],
-      m[1], m[5], m[9],  m[13],
-      m[2], m[6], m[10], m[14],
-      m[3], m[7], m[11], m[15]};
-
-   memcpy(m, t, sizeof(t));
-}
-
-/**
- * Inverts a 4x4 matrix.
- *
- * This function can currently handle only pure translation-rotation matrices.
- * Read http://www.gamedev.net/community/forums/topic.asp?topic_id=425118
- * for an explanation.
- */
-static void
-invert(GLfloat *m)
-{
-   GLfloat t[16];
-   identity(t);
-
-   // Extract and invert the translation part 't'. The inverse of a
-   // translation matrix can be calculated by negating the translation
-   // coordinates.
-   t[12] = -m[12]; t[13] = -m[13]; t[14] = -m[14];
-
-   // Invert the rotation part 'r'. The inverse of a rotation matrix is
-   // equal to its transpose.
-   m[12] = m[13] = m[14] = 0;
-   transpose(m);
-
-   // inv(m) = inv(r) * inv(t)
-   multiply(m, t);
-}
-
-/** 
- * Calculate a perspective projection transformation.
- * 
- * @param m the matrix to save the transformation in
- * @param fovy the field of view in the y direction
- * @param aspect the view aspect ratio
- * @param zNear the near clipping plane
- * @param zFar the far clipping plane
- */
-void perspective(GLfloat *m, GLfloat fovy, GLfloat aspect, GLfloat zNear, GLfloat zFar)
-{
-   GLfloat tmp[16];
-   identity(tmp);
-
-   double sine, cosine, cotangent, deltaZ;
-   GLfloat radians = fovy / 2 * M_PI / 180;
-
-   deltaZ = zFar - zNear;
-   sincos(radians, &sine, &cosine);
-
-   if ((deltaZ == 0) || (sine == 0) || (aspect == 0))
-      return;
-
-   cotangent = cosine / sine;
-
-   tmp[0] = cotangent / aspect;
-   tmp[5] = cotangent;
-   tmp[10] = -(zFar + zNear) / deltaZ;
-   tmp[11] = -1;
-   tmp[14] = -2 * zNear * zFar / deltaZ;
-   tmp[15] = 0;
-
-   memcpy(m, tmp, sizeof(tmp));
-}
 
 /**
  * Draws a gear.
@@ -474,7 +309,7 @@ draw_gear(struct gear *gear, GLfloat *transform,
    /* Translate and rotate the gear */
    memcpy(model_view, transform, sizeof (model_view));
    translate(model_view, x, y, 0);
-   rotate(model_view, 2 * M_PI * angle / 360.0, 0, 0, 1);
+   rotate(model_view, (M_PI / 180.0) * angle, 0, 0, 1);
 
    /* Create and set the ModelViewProjectionMatrix */
    memcpy(model_view_projection, ProjectionMatrix, sizeof(model_view_projection));
@@ -524,25 +359,25 @@ draw_gear(struct gear *gear, GLfloat *transform,
  */
 void gears_draw( void )
 {
-    const static GLfloat red[4] = { 0.8, 0.1, 0.0, 1.0 };
-    const static GLfloat green[4] = { 0.0, 0.8, 0.2, 1.0 };
-    const static GLfloat blue[4] = { 0.2, 0.2, 1.0, 1.0 };
-    GLfloat transform[16];
-    identity(transform);
+   const static GLfloat red[4] = { 0.8, 0.1, 0.0, 1.0 };
+   const static GLfloat green[4] = { 0.0, 0.8, 0.2, 1.0 };
+   const static GLfloat blue[4] = { 0.2, 0.2, 1.0, 1.0 };
+   GLfloat transform[16];
+   identity(transform);
 
-    glClearColor(0.0, 0.0, 0.0, 0.0);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+   glClearColor(0.0, 0.0, 0.0, 0.0);
+   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    /* Translate and rotate the view */
-    translate(transform, 0, 0, -20);
-    rotate(transform, 2 * M_PI * view_rot[0] / 360.0, 1, 0, 0);
-    rotate(transform, 2 * M_PI * view_rot[1] / 360.0, 0, 1, 0);
-    rotate(transform, 2 * M_PI * view_rot[2] / 360.0, 0, 0, 1);
+   /* Translate and rotate the view */
+   translate(transform, 0, 0, -20);
+   rotate(transform, (M_PI / 180.0) * view_rot[0], 1, 0, 0);
+   rotate(transform, (M_PI / 180.0) * view_rot[1], 0, 1, 0);
+   rotate(transform, (M_PI / 180.0) * view_rot[2], 0, 0, 1);
 
-    /* Draw the gears */
-    draw_gear(gear1, transform, -3.0, -2.0, angle, red);
-    draw_gear(gear2, transform, 3.1, -2.0, -2 * angle - 9.0, green);
-    draw_gear(gear3, transform, -3.1, 4.2, -2 * angle - 25.0, blue);
+   /* Draw the gears */
+   draw_gear(gear1, transform, -3.0, -2.0, angle, red);
+   draw_gear(gear2, transform, 3.1, -2.0, -2 * angle - 9.0, green);
+   draw_gear(gear3, transform, -3.1, 4.2, -2 * angle - 25.0, blue);
 }
 
 
@@ -745,6 +580,14 @@ int main(int argc, char *argv[])
     /* Initialize the window */
     _eglut->window_width = 300;
     _eglut->window_height = 300;
+    _eglut->frame_sync = 1;
+
+
+    int i = 0;
+    for (i = 1; i < argc; i++) {
+        if (strcmp("-b", argv[i]) == 0)
+            _eglut->frame_sync = 0;
+    }
 
     _eglut->native_dpy = (EGLNativeDisplayType) WL_InitDisplay();
     _eglut->dpy = eglGetDisplay(_eglut->native_dpy);
@@ -825,8 +668,10 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    // useless ...
-    eglSwapInterval(_eglut->dpy , 0);
+    if ( _eglut->frame_sync == 0) {
+        eglSwapInterval( _eglut->dpy, 0 );
+        fprintf(stdout, " Swap Interval = 0 ! \n"); 
+    }
 
     /* Initialize the gears */
     gears_init();
