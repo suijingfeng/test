@@ -357,7 +357,7 @@ draw_gear(struct gear *gear, GLfloat *transform,
 /** 
  * Draws the gears.
  */
-void gears_draw(void)
+void gears_draw( void )
 {
    const static GLfloat red[4] = { 0.8, 0.1, 0.0, 1.0 };
    const static GLfloat green[4] = { 0.0, 0.8, 0.2, 1.0 };
