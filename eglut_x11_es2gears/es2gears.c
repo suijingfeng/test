@@ -413,16 +413,16 @@ static void translate(GLfloat *m, GLfloat x, GLfloat y, GLfloat z)
                       0, 0, 1, 0, 
                       x, y, z, 1 };
 
-    float out[16];
+//    float out[16];
 
-    MatrixMultiply4x4(t, m, out);
+//    MatrixMultiply4x4(t, m, out);
 
-    printf(" Out: \n");
-    Mat4Dump(out);
+//    printf(" Out: \n");
+//    Mat4Dump(out);
 
-    multiply(m, t);
-    printf(" m: \n");
-    Mat4Dump(m);
+      multiply(m, t);
+//    printf(" m: \n");
+//    Mat4Dump(m);
 }
 
 /** 

@@ -617,7 +617,7 @@ static void usage(void)
 
 int main(int argc, char *argv[])
 {
-   const int winWidth = 640, winHeight = 480;
+   const int winWidth = 642, winHeight = 480;
    Display * x_dpy;
    Window win;
    EGLSurface egl_surf;
